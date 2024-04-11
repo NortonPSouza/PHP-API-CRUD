@@ -6,6 +6,6 @@ services:
       dockerfile: Dockerfile
     container_name: symfony
     ports:
-      - "8000:8000"
+      - "8001:8001"
     volumes:
       - .:/var/www/code

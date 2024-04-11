@@ -5,5 +5,5 @@ WORKDIR /var/www/code
 COPY composer.json composer.lock ./
 RUN composer install --no-scripts --no-autoloader
 COPY . .
-EXPOSE 8000
-CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+EXPOSE 8001
+CMD ["php", "-S", "0.0.0.0:8001", "-t", "public"]

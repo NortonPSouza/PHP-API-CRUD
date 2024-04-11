@@ -14,7 +14,6 @@ final class UserStorage
         private array $users = []
     )
     {
-
     }
 
     public function list(NotificationError $notificationError): ?array
