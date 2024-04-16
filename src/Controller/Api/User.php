@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Helper\NotificationError;
+use App\Helper\TokenVerify;
 use App\Service\User\User\UserService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
@@ -22,6 +23,10 @@ final class User extends AbstractController
     public function list(Request $request): Response
     {
         $notificationError = new NotificationError();
+        $userHasPermission = TokenVerify::verify($notificationError, $request->headers->get("Authorization"));
+        if (!$userHasPermission) {
+            return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());
+        }
         $users = $this->userService->list($notificationError);
         if (!$users) {
             return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());
@@ -33,6 +38,10 @@ final class User extends AbstractController
     public function create(Request $request): Response
     {
         $notificationError = new NotificationError();
+        $userHasPermission = TokenVerify::verify($notificationError, $request->headers->get("Authorization"));
+        if (!$userHasPermission) {
+            return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());
+        }
         $data = [
             "name" => (string) $request->get("name"),
             "email" => (string) $request->get("email"),
@@ -47,12 +56,17 @@ final class User extends AbstractController
     }
 
     #[Route("/{id}", methods: ["PUT"])]
-    public function update(Request $request, string $id): Response
+    public function update(Request $request, int $id): Response
     {
         $notificationError = new NotificationError();
+        $userHasPermission = TokenVerify::verify($notificationError, $request->headers->get("Authorization"));
+        if (!$userHasPermission) {
+            return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());
+        }
         $data = [
             "name" => (string) $request->get("name"),
             "city" => (string) $request->get("city"),
+            "password" => (string) $request->get("password"),
         ];
         $wasUpdated = $this->userService->update($notificationError, $id, $data);
         if (!$wasUpdated) {
@@ -62,9 +76,13 @@ final class User extends AbstractController
     }
 
     #[Route("/{id}", methods: ["GET"])]
-    public function find(Request $request, string $id): Response
+    public function find(Request $request, int $id): Response
     {
         $notificationError = new NotificationError();
+        $userHasPermission = TokenVerify::verify($notificationError, $request->headers->get("Authorization"));
+        if (!$userHasPermission) {
+            return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());
+        }
         $user = $this->userService->find($notificationError, $id);
         if (!$user) {
             return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());
@@ -76,6 +94,10 @@ final class User extends AbstractController
     public function delete(Request $request, string $id): Response
     {
         $notificationError = new NotificationError();
+        $userHasPermission = TokenVerify::verify($notificationError, $request->headers->get("Authorization"));
+        if (!$userHasPermission) {
+            return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());
+        }
         $wasDeleted = $this->userService->delete($notificationError, $id);
         if (!$wasDeleted) {
             return new JsonResponse($notificationError->getErrors(), $notificationError->getStatusCode());

@@ -9,3 +9,26 @@ services:
       - "8001:8001"
     volumes:
       - .:/var/www/code
+    networks:
+      - infra
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    command: "--default-authentication-plugin=mysql_native_password"
+    environment:
+      MYSQL_ROOT_PASSWORD: dfe4da18
+      MYSQL_DATABASE: study
+      MYSQL_USER: norton
+      MYSQL_PASSWORD: 123456
+    volumes:
+      - mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - infra
+volumes:
+  mysql:
+    driver: local
+networks:
+  infra:
+    driver: bridge

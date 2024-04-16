@@ -2,30 +2,39 @@
 
 namespace App\Service\User\User\Storage;
 
+use App\Entity\User;
 use App\Helper\NotificationError;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Uid\Uuid;
 
-final class UserStorage
+final readonly class UserStorage
 {
 
-
     public function __construct(
-        private array $users = []
+        private EntityManagerInterface $entityManager
     )
     {
     }
 
     public function list(NotificationError $notificationError): ?array
     {
+        /** @var User[] $userEntity */
+        $usersEntity = $this->entityManager->getRepository(User::class)->findAll();
         try {
-            if (count($this->users) <= 0) {
+            if (!$usersEntity) {
                 $notificationError
                     ->setStatusCode(Response::HTTP_NOT_FOUND)
                     ->setErrors(["error" => "user not found"]);
                 return null;
             }
-            return $this->users;
+            return array_map(function (User $userEntity){
+                return [
+                    "id" => $userEntity->getId(),
+                    "name" => $userEntity->getName(),
+                    "email" => $userEntity->getEmail(),
+                    "city" => $userEntity->getCity()
+                ];
+            }, $usersEntity);
         } catch (\Exception) {
             $notificationError
                 ->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR)
@@ -36,9 +45,16 @@ final class UserStorage
 
     public function create(NotificationError $notificationError, array $data): bool
     {
+        $password = password_hash($data["password"],PASSWORD_DEFAULT);
         try {
-            $data["id"] = Uuid::v4()->toRfc4122();
-            $this->users[] = $data;
+            $userEntity = new User();
+            $userEntity->setName($data["name"]);
+            $userEntity->setEmail($data["email"]);
+            $userEntity->setPassword($password);
+            $userEntity->setCity($data["city"]);
+
+            $this->entityManager->persist($userEntity);
+            $this->entityManager->flush();
             return true;
         } catch (\Exception) {
             $notificationError
@@ -48,10 +64,17 @@ final class UserStorage
         }
     }
 
-    public function update(NotificationError $notificationError, array $data): bool
+    public function update(NotificationError $notificationError, int $id, array $data): bool
     {
+        /** @var User $userEntity */
+        $userEntity = $this->entityManager->getRepository(User::class)->find($id);
         try {
-            $userUpdate = $data;
+            $userEntity->setName($data["name"]);
+            $userEntity->setCity($data["city"]);
+            $userEntity->setPassword($data["password"]);
+
+            $this->entityManager->persist($userEntity);
+            $this->entityManager->flush();
             return true;
         } catch (\Exception) {
             $notificationError
@@ -61,14 +84,19 @@ final class UserStorage
         }
     }
 
-    public function delete(NotificationError $notificationError, string $id): bool
+    public function delete(NotificationError $notificationError, int $id): bool
     {
         try {
-            $indexUser = array_search($id, $this->users);
-            if (!$indexUser) {
+            /** @var User $userEntity */
+            $userEntity = $this->entityManager->getRepository(User::class)->find($id);
+            if (!$userEntity) {
+                $notificationError
+                    ->setStatusCode(Response::HTTP_NOT_FOUND)
+                    ->setErrors(["error" => "user not found"]);
                 return false;
             }
-            unset($this->users[$indexUser]);
+            $this->entityManager->remove($userEntity);
+            $this->entityManager->flush();
             return true;
         } catch (\Exception) {
             $notificationError
@@ -78,14 +106,23 @@ final class UserStorage
         }
     }
 
-    public function listOne(NotificationError $notificationError, string $id): ?array
+    public function find(NotificationError $notificationError, int $id): ?array
     {
         try {
-            $indexUser = array_search($id, $this->users);
-            if (!$indexUser) {
+            /** @var User $userEntity */
+            $userEntity = $this->entityManager->getRepository(User::class)->find($id);
+            if (!$userEntity) {
+                $notificationError
+                    ->setStatusCode(Response::HTTP_NOT_FOUND)
+                    ->setErrors(["error" => "user not found"]);
                 return null;
             }
-            return $this->users[$indexUser];
+            return [
+                "id" => $userEntity->getId(),
+                "name" => $userEntity->getName(),
+                "email" => $userEntity->getEmail(),
+                "city" => $userEntity->getCity()
+            ];
         } catch (\Exception) {
             $notificationError
                 ->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR)

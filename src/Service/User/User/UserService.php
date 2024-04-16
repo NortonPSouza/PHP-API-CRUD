@@ -2,18 +2,21 @@
 
 namespace App\Service\User\User;
 
+use App\Entity\User;
 use App\Helper\NotificationError;
 use App\Service\User\User\Storage\UserStorage;
 use App\Service\User\User\Validation\UserForm;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
-final readonly class UserService
+final class UserService
 {
+    private UserStorage $userStorage;
     public function __construct(
-        private UserStorage $userStorage
+        private readonly EntityManagerInterface $entityManager
     )
     {
-
+        $this->userStorage = new UserStorage($entityManager);
     }
 
     public function list(NotificationError $notificationError): ?array
@@ -27,22 +30,30 @@ final readonly class UserService
         if (!$isUserValid) {
             return false;
         }
+        $hasEmail = $this->entityManager->getRepository(User::class)->findBy(["email" => $data['email']]);
+        if($hasEmail){
+            $notificationError
+                ->setStatusCode(Response::HTTP_CONFLICT)
+                ->setErrors(["error" => "user already exists"]);
+            return false;
+        }
         return $this->userStorage->create($notificationError, $data);
     }
 
-    public function update(NotificationError $notificationError, string $id, array $data): bool
+    public function update(NotificationError $notificationError, int $id, array $data): bool
     {
-        if ($id != 1) {
+        $isUserValid = UserForm::update($notificationError, $data);
+        if (!$isUserValid) {
+            return false;
+        }
+        $hasUser = $this->entityManager->getRepository(User::class)->findBy(["id" => $id]);
+        if (!$hasUser) {
             $notificationError
                 ->setStatusCode(Response::HTTP_NOT_FOUND)
                 ->setErrors(["error" => "user not found"]);
             return false;
         }
-        $isUserValid = UserForm::update($notificationError, $data);
-        if (!$isUserValid) {
-            return false;
-        }
-        return $this->userStorage->update($notificationError, $data);
+        return $this->userStorage->update($notificationError, $id, $data);
     }
 
     public function delete(NotificationError $notificationError, string $id): bool
@@ -52,13 +63,6 @@ final readonly class UserService
 
     public function find(NotificationError $notificationError, string $id): ?array
     {
-        $user = $this->userStorage->listOne($notificationError, $id);
-        if (!$user) {
-            $notificationError
-                ->setStatusCode(Response::HTTP_NOT_FOUND)
-                ->setErrors(["error" => "user not found"]);
-            return null;
-        }
-        return $user;
+        return $this->userStorage->find($notificationError, $id);
     }
 }
